@@ -10,6 +10,21 @@ r = redis.Redis(host='redis', port=6379, decode_responses=True)
 conn = psycopg2.connect(host="db", database="postgres", user="postgres", password="postgres")
 cur = conn.cursor()
 
+# Crear la tabla votes si no existe
+def create_votes_table():
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS votes (
+            id SERIAL PRIMARY KEY,
+            user_id INT,
+            movie_voted VARCHAR(100),
+            recommendations TEXT
+        );
+    """)
+    conn.commit()
+
+# Llamar a la función para crear la tabla
+create_votes_table()
+
 # Cargar las películas de MovieLens
 movies = pd.read_csv('/mnt/data/movies.dat', sep="::", engine='python', names=["MovieID", "Title", "Genres"], encoding='latin1')
 

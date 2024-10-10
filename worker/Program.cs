@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using StackExchange.Redis;
 using Npgsql;
+using System.Threading.Tasks; // Para paralelizar con Task
 
 class Worker
 {
@@ -13,9 +15,13 @@ class Worker
         using var conn = new NpgsqlConnection(connString);
         conn.Open();
 
+        // Lista de películas
+        var movies = new List<string> { "Movie 1", "Movie 2", "Movie 3", "Movie 4", "Movie 5" };
+
         while (true)
         {
-            foreach (var movie in new[] { "Movie 1", "Movie 2", "Movie 3", "Movie 4", "Movie 5" })
+            // Procesar películas en paralelo usando Task
+            Parallel.ForEach(movies, movie =>
             {
                 var votes = db.StringGet(movie); // Obtener los votos de Redis
                 if (!string.IsNullOrEmpty(votes))
@@ -46,7 +52,7 @@ class Worker
                     // Eliminar el voto de Redis después de procesarlo
                     db.KeyDelete(movie);
                 }
-            }
+            });
 
             Console.WriteLine("Votes processed and stored in PostgreSQL.");
             System.Threading.Thread.Sleep(5000); // Procesar cada 5 segundos

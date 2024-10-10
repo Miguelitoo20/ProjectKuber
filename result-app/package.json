@@ -1,15 +1,14 @@
 {
-    "name": "result-app",
-    "version": "1.0.0",
-    "description": "Result and Recommendation App",
-    "main": "server.js",
-    "scripts": {
+  "name": "result-app",
+  "version": "1.0.0",
+  "description": "Result and Recommendation App",
+  "main": "server.js",
+  "scripts": {
       "start": "node server.js"
-    },
-    "dependencies": {
+  },
+  "dependencies": {
       "express": "^4.17.1",
       "pg": "^8.7.1",
       "redis": "^3.1.2"
-    }
   }
-  
+}
