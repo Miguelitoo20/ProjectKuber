@@ -1,0 +1,53 @@
+version: '3'
+
+services:
+  vote-app:
+    build: ./vote-app
+    ports:
+      - "5000:80"
+    depends_on:
+      - redis
+    volumes:
+      - ./data:/mnt/data  # Montar los datos de MovieLens en vote-app
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  worker:
+    build: ./worker
+    depends_on:
+      - redis
+      - db
+
+  db:
+    image: postgres:alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  recommendation-service:
+    build: ./recommendation-service
+    ports:
+      - "5001:5001"
+    depends_on:
+      - redis
+      - db
+    volumes:
+      - ./data:/mnt/data  # Montar los datos de MovieLens en recommendation-service
+
+  result-app:
+    build: ./result-app
+    ports:
+      - "5002:5002"
+    depends_on:
+      - db
+      - recommendation-service
+
+volumes:
+  db-data:
