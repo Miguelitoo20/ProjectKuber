@@ -1,5 +1,5 @@
 import redis
-import dask.dataframe as dd  # Cambia pandas por dask.dataframe
+import dask.dataframe as dd  # Usamos Dask para cargar y manejar grandes datasets
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
@@ -7,38 +7,34 @@ app = Flask(__name__)
 # Conexión a Redis
 r = redis.Redis(host='redis', port=6379, decode_responses=True)
 
-# Cargar los datos de MovieLens usando Dask
-movies = dd.read_csv('/mnt/data/movies.dat', sep="::", engine='python', names=["MovieID", "Title", "Genres"])
-ratings = dd.read_csv('/mnt/data/ratings.dat', sep="::", engine='python', names=["UserID", "MovieID", "Rating", "Timestamp"])
-users = dd.read_csv('/mnt/data/users.dat', sep="::", engine='python', names=["UserID", "Gender", "Age", "Occupation", "Zip-code"])
+# Cargar los datos de canciones de Spotify usando Dask
+spotify_songs = dd.read_csv('/mnt/data/spotify_songs.csv')
 
-# Función para calcular recomendaciones basadas en género usando Dask
-def recommend_by_genre(movie_voted, user_id):
-    # Obtener el género de la película votada (Usando Dask para filtrar)
-    genre = movies[movies['Title'] == movie_voted]['Genres'].compute().values[0]  # .compute() para realizar el cálculo
+# Función para calcular recomendaciones basadas en el género de la playlist
+def recommend_by_genre(track_voted, user_id):
+    # Obtener el género de la canción votada (Usando Dask para filtrar)
+    genre = spotify_songs[spotify_songs['track_name'] == track_voted]['playlist_genre'].compute().values[0]  
     
-    # Encontrar películas del mismo género
-    similar_movies = movies[movies['Genres'].str.contains(genre)]
+    # Encontrar canciones del mismo género de playlist
+    similar_songs = spotify_songs[spotify_songs['playlist_genre'] == genre]
     
-    # Obtener las películas mejor valoradas por otros usuarios
-    best_movies = ratings[ratings['MovieID'].isin(similar_movies['MovieID'])].groupby('MovieID')['Rating'].mean().compute().sort_values(ascending=False)
+    # Filtrar las canciones más populares de este género
+    top_songs = similar_songs[['track_name', 'track_popularity']].compute()
+    top_songs = top_songs.sort_values(by='track_popularity', ascending=False)
     
-    # Tomar la mejor película que el usuario no haya votado aún
-    recommended_movie_id = best_movies.index[0] if len(best_movies) > 0 else None
+    # Tomar la canción más popular que el usuario no haya votado aún
+    recommended_song = top_songs['track_name'].values[0] if len(top_songs) > 0 else None
 
-    if recommended_movie_id is not None:
-        recommended_movie_title = movies[movies['MovieID'] == recommended_movie_id]['Title'].compute().values[0]
-        return recommended_movie_title
-    return None
+    return recommended_song
 
 # Servicio de recomendación
 @app.route('/recommend', methods=['POST'])
 def recommend():
     user_id = request.json['user_id']
-    movie_voted = request.json['movie_voted']
+    track_voted = request.json['track_voted']
 
     # Generar una recomendación
-    recommendation = recommend_by_genre(movie_voted, user_id)
+    recommendation = recommend_by_genre(track_voted, user_id)
 
     # Guardar la recomendación en Redis
     if recommendation:

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voting Results</title>
+    <title>Voting Results for Songs</title>
     <style>
         body {
             font-family: 'Helvetica', Arial, sans-serif;
@@ -23,17 +23,16 @@
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        .movie-result {
+        .song-result {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
             background-color: #fff;
             padding: 10px 20px;
-            border-radius: 25px;
+            border-radius: 10px;
             margin: 15px 0;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        .movie-title {
+        .song-title {
             font-size: 18px;
             font-weight: bold;
             color: #34495e;
@@ -43,95 +42,48 @@
             color: #16a085;
             font-weight: bold;
         }
-        /* Estilo para la barra de fondo */
-        .progress-bg {
-            width: 100%;
-            background-color: #bdc3c7;
-            height: 10px;
-            border-radius: 25px;
-            margin-left: 10px;
-            margin-right: 10px;
-            position: relative;
-            overflow: hidden;
-        }
-        /* Estilo para la barra de progreso */
-        .progress-bar {
-            background: linear-gradient(90deg, #16a085, #27ae60);
-            height: 100%;
-            border-radius: 25px;
-            transition: width 0.4s ease;
-        }
-        /* Icono de la película */
-        .movie-icon {
-            width: 40px;
-            height: 40px;
-            background-color: #3498db;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        .recommendations {
+            font-size: 14px;
+            color: #7f8c8d;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Voting Results</h1>
+        <h1>Últimos Votos y Recomendaciones de Canciones</h1>
 
         <div id="results"></div>
 
         <script>
-            // Hacer la petición al servidor para obtener los resultados de las votaciones
-            fetch('/results')
+            // Hacer la petición al servidor para obtener los últimos 3 votos y recomendaciones
+            fetch('/latest-votes')
                 .then(response => response.json())
                 .then(data => {
                     const resultsDiv = document.getElementById('results');
                     resultsDiv.innerHTML = ''; // Limpiar contenido
 
-                    data.forEach((movie, index) => {
-                        // Crear el contenedor principal para el resultado de la película
-                        const movieResult = document.createElement('div');
-                        movieResult.classList.add('movie-result');
+                    data.forEach((vote) => {
+                        // Crear el contenedor principal para el resultado de la canción
+                        const songResult = document.createElement('div');
+                        songResult.classList.add('song-result');
 
-                        // Crear el icono de la película
-                        const movieIcon = document.createElement('div');
-                        movieIcon.classList.add('movie-icon');
-                        movieIcon.innerText = index + 1;
+                        // Crear el título de la canción
+                        const songTitle = document.createElement('div');
+                        songTitle.classList.add('song-title');
+                        songTitle.innerText = `Canción: ${vote.song_voted}`;
 
-                        // Crear el título de la película
-                        const movieTitle = document.createElement('div');
-                        movieTitle.classList.add('movie-title');
-                        movieTitle.innerText = `${movie.movie_voted}`;
-
-                        // Crear el contenedor de la barra de fondo
-                        const progressBg = document.createElement('div');
-                        progressBg.classList.add('progress-bg');
-
-                        // Crear la barra de progreso para representar los votos
-                        const progressBar = document.createElement('div');
-                        progressBar.classList.add('progress-bar');
-                        progressBar.style.width = `${movie.votes * 10}px`;  // Ancho depende de los votos
-
-                        // Añadir la barra de progreso dentro de la barra de fondo
-                        progressBg.appendChild(progressBar);
-
-                        // Crear el contador de votos
-                        const votesCount = document.createElement('div');
-                        votesCount.classList.add('votes-count');
-                        votesCount.innerText = `${movie.votes} votes`;
+                        // Crear el contenedor para las recomendaciones
+                        const recommendations = document.createElement('div');
+                        recommendations.classList.add('recommendations');
+                        recommendations.innerText = `Recomendaciones: ${vote.recommendations.join(', ') || 'No hay recomendaciones disponibles'}`;
 
                         // Añadir todos los elementos al contenedor principal
-                        movieResult.appendChild(movieIcon);
-                        movieResult.appendChild(movieTitle);
-                        movieResult.appendChild(progressBg);
-                        movieResult.appendChild(votesCount);
+                        songResult.appendChild(songTitle);
+                        songResult.appendChild(recommendations);
 
                         // Añadir el resultado al div de resultados
-                        resultsDiv.appendChild(movieResult);
+                        resultsDiv.appendChild(songResult);
                     });
                 })
                 .catch(err => {

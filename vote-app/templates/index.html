@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vote for Your Favorite Movie</title>
+    <title>Vote for Your Favorite Song</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -23,7 +23,7 @@
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        .movie-option {
+        .track-option {
             background-color: #007bff;
             color: white;
             margin: 10px 0;
@@ -31,7 +31,7 @@
             border-radius: 5px;
             transition: background-color 0.3s;
         }
-        .movie-option:hover {
+        .track-option:hover {
             background-color: #0056b3;
         }
         .label {
@@ -54,14 +54,14 @@
 <body>
 
     <div class="container">
-        <h1>Vote for Your Favorite Movie</h1>
+        <h1>Vote for Your Favorite Song</h1>
         <form action="/vote" method="POST">
             <input type="hidden" name="user_id" value="1">  <!-- ID del usuario -->
 
-            {% for movie in movies %}
-            <div class="movie-option">
-                <input type="radio" id="{{ movie['MovieID'] }}" name="movie" value="{{ movie['Title'] }}">
-                <label for="{{ movie['MovieID'] }}" class="label">{{ movie['Title'] }} ({{ movie['Genres'] }})</label>
+            {% for track in tracks %}
+            <div class="track-option">
+                <input type="radio" id="{{ track['track_id'] }}" name="track" value="{{ track['track_name'] }}">
+                <label for="{{ track['track_id'] }}" class="label">{{ track['track_name'] }} ({{ track['playlist_genre'] }})</label>
             </div>
             {% endfor %}
             <input type="submit" value="Vote" style="width: 100%; padding: 10px; font-size: 16px;">
@@ -70,10 +70,10 @@
         <!-- Sección de Recomendaciones -->
         {% if recommendations %}
         <div class="recommendation">
-            <h2>Recommended Movies Based on Your Vote</h2>
+            <h2>Recommended Songs Based on Your Vote</h2>
             <ul>
-                {% for movie in recommendations.split(',') %}
-                <li>{{ movie }}</li>
+                {% for song in recommendations.split(',') %}
+                <li>{{ song }}</li>
                 {% endfor %}
             </ul>
         </div>
