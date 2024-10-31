@@ -15,11 +15,11 @@ services:
     ports:
       - "6379:6379"
 
-  worker:
-    build: ./worker
-    depends_on:
-      - redis
-      - db
+  #worker:
+    #build: ./worker
+    #depends_on:
+      #- redis
+      #- db
 
   db:
     image: postgres:alpine
@@ -41,13 +41,13 @@ services:
     volumes:
       - ./data:/mnt/data  # Montar datos de canciones en recommendation-service
 
-  result-app:
-    build: ./result-app
-    ports:
-      - "5002:5002"
-    depends_on:
-      - db
-      - recommendation-service
+  #result-app:
+    #build: ./result-app
+    #ports:
+      #- "5002:5002"
+    #depends_on:
+      #- db
+      #- recommendation-service
 
   # Servicio para el scheduler de Dask
   dask-scheduler:

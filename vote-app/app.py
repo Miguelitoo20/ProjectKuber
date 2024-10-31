@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect
 import redis
 import pandas as pd
 import psycopg2
+import time
 
 app = Flask(__name__)
 
@@ -73,6 +74,8 @@ def vote():
         conn.rollback()  # Revertir en caso de error
         print(f"Error al insertar el voto: {e}")
         return redirect('/')  # Redirigir sin recomendaciones en caso de error
+    
+    time.sleep(3)
 
     # Redirigir a la página principal con las recomendaciones
     return redirect(f'/?recommendations={",".join(similar_tracks)}')
