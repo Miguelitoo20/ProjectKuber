@@ -902,19 +902,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Usuario\\.nuget\\packages\\": {}
+    "C:\\Users\\Asus User\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Aplicaciones\\IntelNeg\\ExamDesyInt-2\\worker\\worker.csproj",
+      "projectUniqueName": "d:\\Docker(C#)\\Automatizacion\\examenig\\worker\\worker.csproj",
       "projectName": "worker",
-      "projectPath": "D:\\Aplicaciones\\IntelNeg\\ExamDesyInt-2\\worker\\worker.csproj",
-      "packagesPath": "C:\\Users\\Usuario\\.nuget\\packages\\",
-      "outputPath": "D:\\Aplicaciones\\IntelNeg\\ExamDesyInt-2\\worker\\obj\\",
+      "projectPath": "d:\\Docker(C#)\\Automatizacion\\examenig\\worker\\worker.csproj",
+      "packagesPath": "C:\\Users\\Asus User\\.nuget\\packages\\",
+      "outputPath": "d:\\Docker(C#)\\Automatizacion\\examenig\\worker\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\Usuario\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\Asus User\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
@@ -968,7 +968,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.303/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.401/PortableRuntimeIdentifierGraph.json"
       }
     }
   },

@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:9.5.0
+          ports:
+            - containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: "admin"  # Puedes cambiar esta contraseña
+          resources:
+            limits:
+              memory: "512Mi"  # Limita la memoria a 512 MB
+              cpu: "500m"      # Limita el uso de CPU a 50% de un núcleo
+            requests:
+              memory: "256Mi"  # Reserva 256 MB de memoria
+              cpu: "250m"      # Reserva el uso de CPU a 25% de un núcleo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  ports:
+    - port: 3000
+  selector:
+    app: grafana

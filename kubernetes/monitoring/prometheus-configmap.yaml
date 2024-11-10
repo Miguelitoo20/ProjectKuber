@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-configmap
+  labels:
+    app: prometheus
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: 'flask-app'
+        static_configs:
+          - targets: ['vote-app:80', 'recommendation-service:5001']
+      - job_name: 'redis'
+        static_configs:
+          - targets: ['redis:6379']
+      - job_name: 'postgres'
+        static_configs:
+          - targets: ['db:5432']

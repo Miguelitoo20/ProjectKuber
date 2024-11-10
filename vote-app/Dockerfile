@@ -2,9 +2,18 @@ FROM python:3.8-slim
 
 WORKDIR /app
 
-COPY . /app
+# Crear el directorio de datos
+RUN mkdir -p /mnt/data
 
-RUN pip install -r requirements.txt
+# Copiar requirements.txt primero para aprovechar el caché
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar el archivo de datos al directorio correcto
+COPY ./data/spotify_songs.csv /mnt/data/
+
+# Copiar el resto de la aplicación
+COPY . .
 
 EXPOSE 80
 
