@@ -17,14 +17,12 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Paso 2: Cambiar al directorio del repositorio clonado
-cd Proyect-Kuber/kubernetes
-
-# Verificar si la carpeta kubernetes existe
-if [ ! -d "kubernetes" ]; then
+# Paso 2: Verificar si la carpeta kubernetes existe y cambiar al directorio del repositorio clonado
+if [ ! -d "Proyect-Kuber/kubernetes" ]; then
     echo "El directorio kubernetes no existe. Verifica la estructura del repositorio."
     exit 1
 fi
+cd Proyect-Kuber/kubernetes
 
 # Paso 3: Aplicar los archivos de Kubernetes
 echo "Aplicando los archivos de Kubernetes..."
