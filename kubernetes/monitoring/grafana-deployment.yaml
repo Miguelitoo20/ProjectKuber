@@ -29,6 +29,15 @@ spec:
             requests:
               memory: "256Mi"  # Reserva 256 MB de memoria
               cpu: "250m"      # Reserva el uso de CPU a 25% de un núcleo
+          volumeMounts:
+            - name: grafana-dashboard-volume
+              mountPath: /etc/grafana/provisioning/dashboards
+              subPath: dashboard.json  # Monta el archivo dashboard.json
+      volumes:
+        - name: grafana-dashboard-volume
+          configMap:
+            name: grafana-dashboard  # Hace referencia al ConfigMap del dashboard
+
 ---
 apiVersion: v1
 kind: Service
@@ -39,3 +48,27 @@ spec:
     - port: 3000
   selector:
     app: grafana
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard
+data:
+  dashboard.json: |
+    {
+      "dashboard": {
+        "panels": [
+          {
+            "type": "graph",
+            "title": "CPU Usage",
+            "targets": [
+              {
+                "expr": "rate(cpu_usage_seconds_total[1m])",
+                "legendFormat": "{{instance}}"
+              }
+            ]
+          }
+        ]
+      }
+    }
