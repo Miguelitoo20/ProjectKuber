@@ -1,14 +1,17 @@
-
 apiVersion: v1
 kind: Service
 metadata:
   name: recommendation-service
 spec:
   ports:
-    - port: 5001
+    - name: http-port
+      port: 5001
       targetPort: 5001
-    - port: 5001  # Asegúrate de exponer el puerto de métricas
-      targetPort: 5001
+      nodePort: 32217  # Asignar un NodePort único si deseas exponerlo
+    - name: metrics-port
+      port: 5002  # Usar un puerto diferente para las métricas
+      targetPort: 5002
+      nodePort: 32218  # Asignar un NodePort único si deseas exponerlo
   selector:
     app: recommendation-service
   type: NodePort
