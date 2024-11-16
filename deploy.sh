@@ -34,6 +34,8 @@ sudo docker --version
 # Agregar al usuario actual al grupo de Docker (esto permite ejecutar Docker sin sudo)
 sudo usermod -aG docker $USER
 
+echo "Es necesario reiniciar sesión o el sistema para que los cambios de grupo en Docker tengan efecto."
+
 # Paso 2: Instalar Minikube
 echo "Instalando Minikube..."
 
@@ -60,15 +62,28 @@ sudo mv ./kubectl /usr/local/bin/kubectl
 # Verificar instalación de kubectl
 kubectl version --client
 
-# Paso 4: Iniciar Minikube
+# Paso 4: Verificar que Docker esté en funcionamiento antes de iniciar Minikube
+if ! systemctl is-active --quiet docker; then
+    echo "Docker no está corriendo. Inicia Docker antes de continuar."
+    exit 1
+fi
+
+# Paso 5: Iniciar Minikube
 echo "Iniciando Minikube..."
 minikube start --driver=docker
 
-# Paso 5: Verificar si kubectl está configurado correctamente
+# Verificar que Minikube esté funcionando correctamente
+minikube status
+if [ $? -ne 0 ]; then
+    echo "Minikube no pudo iniciarse correctamente. Por favor, verifica los logs."
+    exit 1
+fi
+
+# Paso 6: Verificar el acceso al clúster de Minikube
 echo "Verificando el acceso al clúster de Minikube..."
 kubectl cluster-info
 
-# Paso 6: Clonar el repositorio
+# Paso 7: Clonar el repositorio
 echo "Clonando el repositorio..."
 git clone https://github.com/FranklinJunnior/Proyect-Kuber.git
 
@@ -78,24 +93,24 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Paso 7: Verificar si la carpeta kubernetes existe y cambiar al directorio del repositorio clonado
+# Paso 8: Verificar si la carpeta kubernetes existe y cambiar al directorio del repositorio clonado
 if [ ! -d "Proyect-Kuber/kubernetes" ]; then
     echo "El directorio kubernetes no existe. Verifica la estructura del repositorio."
     exit 1
 fi
 cd Proyect-Kuber/kubernetes
 
-# Paso 8: Aplicar los archivos de Kubernetes
+# Paso 9: Aplicar los archivos de Kubernetes
 echo "Aplicando los archivos de Kubernetes..."
 kubectl apply -f deployments/
 kubectl apply -f services/
 kubectl apply -f monitoring/
 
-# Paso 9: Verificar el estado de los pods en Kubernetes
+# Paso 10: Verificar el estado de los pods en Kubernetes
 echo "Verificando el estado de los pods..."
 kubectl get pods
 
-# Paso 10: Exponer los servicios en los puertos especificados
+# Paso 11: Exponer los servicios en los puertos especificados
 echo "Exponiendo los puertos importantes..."
 kubectl expose deployment vote-app --type=NodePort --port=80 --target-port=80 --name=vote-app-service
 kubectl expose deployment grafana --type=NodePort --port=3000 --target-port=3000 --name=grafana-service
@@ -103,19 +118,22 @@ kubectl expose deployment prometheus --type=NodePort --port=9090 --target-port=9
 
 echo "Puertos expuestos correctamente."
 
-# Paso 11: Verificar los servicios expuestos
+# Paso 12: Verificar los servicios expuestos
 echo "Verificando los servicios expuestos..."
 kubectl get svc
 
-# Paso 12: Verificar el acceso a los servicios expuestos
-echo "Accediendo a los servicios de Prometheus y Grafana..."
-PROMETHEUS_URL=$(minikube service prometheus --url)
+# Paso 13: Verificar el acceso a los servicios expuestos
+# Obtener la URL de Grafana
 GRAFANA_URL=$(minikube service grafana --url)
-echo "Prometheus está accesible en: $PROMETHEUS_URL"
-echo "Grafana está accesible en: $GRAFANA_URL"
+echo "Grafana está disponible en la URL: $GRAFANA_URL"
 
-# Paso 13: Acceder a Grafana y Prometheus
-# Nota: Debes acceder manualmente a las URLs proporcionadas o configurar Grafana con la URL de Prometheus
-# Asegúrate de iniciar sesión en Grafana con las credenciales por defecto (admin/admin) o las que hayas configurado
+# Obtener la URL de Prometheus
+PROMETHEUS_URL=$(minikube service prometheus --url)
+echo "Prometheus está disponible en la URL: $PROMETHEUS_URL"
 
+# Obtener la URL de la aplicación Vote
+VOTE_APP_URL=$(minikube service vote-app --url)
+echo "La aplicación Vote está disponible en la URL: $VOTE_APP_URL"
+
+# Fin del script
 echo "Proceso de instalación y configuración completado."
