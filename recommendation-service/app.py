@@ -1,5 +1,5 @@
 import redis
-import dask.dataframe as dd  # Usamos Dask para cargar y manejar grandes datasets
+import dask.dataframe as dd
 from flask import Flask, jsonify, request
 from prometheus_client import Counter, Histogram, Gauge, generate_latest
 
@@ -21,29 +21,27 @@ REDIS_CONNECTION_GAUGE = Gauge('redis_connection_status', 'Estado de la conexió
 def check_redis_connection():
     try:
         r.ping()
-        REDIS_CONNECTION_GAUGE.set(1)  # Conexión exitosa
+        REDIS_CONNECTION_GAUGE.set(1)
     except redis.ConnectionError:
-        REDIS_CONNECTION_GAUGE.set(0)  # Falla en la conexión
+        REDIS_CONNECTION_GAUGE.set(0)
 
 # Función para calcular recomendaciones basadas en el género de la playlist
 def recommend_by_genre(track_voted, user_id):
-    # Obtener el género de la canción votada (Usando Dask para filtrar)
-    genre = spotify_songs[spotify_songs['track_name'] == track_voted]['playlist_genre'].compute().values[0]  
-    
-    # Incrementar el contador de recomendaciones
+    genre_row = spotify_songs[spotify_songs['track_name'] == track_voted]
+    if genre_row.empty:
+        return None
+
+    genre = genre_row['playlist_genre'].compute().values[0]
     RECOMMENDATION_COUNTER.labels(genre=genre).inc()
 
-    # Encontrar canciones del mismo género de playlist
     similar_songs = spotify_songs[spotify_songs['playlist_genre'] == genre]
-    
-    # Filtrar las canciones más populares de este género
     top_songs = similar_songs[['track_name', 'track_popularity']].compute()
     top_songs = top_songs.sort_values(by='track_popularity', ascending=False)
-    
-    # Tomar la canción más popular que el usuario no haya votado aún
-    recommended_song = top_songs['track_name'].values[0] if len(top_songs) > 0 else None
 
-    return recommended_song
+    for song in top_songs['track_name'].values:
+        if song != track_voted:
+            return song
+    return None
 
 # Servicio de recomendación
 @app.route('/recommend', methods=['POST'])
@@ -52,13 +50,13 @@ def recommend():
     check_redis_connection()
 
     with REQUEST_LATENCY.labels(endpoint='/recommend').time():
-        user_id = request.json['user_id']
-        track_voted = request.json['track_voted']
+        user_id = request.json.get('user_id')
+        track_voted = request.json.get('track_voted')
 
-        # Generar una recomendación
+        if not user_id or not track_voted:
+            return jsonify({"error": "Faltan parámetros obligatorios"}), 400
+
         recommendation = recommend_by_genre(track_voted, user_id)
-
-        # Guardar la recomendación en Redis
         if recommendation:
             r.set(f"user:{user_id}:recommendations", str([recommendation]))
 
@@ -68,6 +66,11 @@ def recommend():
 @app.route('/metrics')
 def metrics():
     return generate_latest(), 200
+
+# Ruta de verificación de salud
+@app.route('/health')
+def health_check():
+    return "OK", 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)

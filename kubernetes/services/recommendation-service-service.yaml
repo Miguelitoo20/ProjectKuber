@@ -1,13 +1,14 @@
+
 apiVersion: v1
 kind: Service
 metadata:
   name: recommendation-service
 spec:
-  type: NodePort
   ports:
     - port: 5001
       targetPort: 5001
-      protocol: TCP
-      nodePort: 31838  # Asegúrate de que nodePort esté correctamente configurado
+    - port: 5001  # Asegúrate de exponer el puerto de métricas
+      targetPort: 5001
   selector:
     app: recommendation-service
+  type: NodePort

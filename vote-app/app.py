@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect
 import redis
 import pandas as pd
 import psycopg2
-import time
 from prometheus_client import Counter, Histogram, Gauge, generate_latest
 
 app = Flask(__name__)
@@ -14,17 +13,19 @@ cur = conn.cursor()
 
 # Crear la tabla votes si no existe
 def create_votes_table():
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS votes (
-            id SERIAL PRIMARY KEY,
-            user_id INT,
-            track_voted VARCHAR(100),
-            recommendations TEXT
-        );
-    """)
-    conn.commit()
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS votes (
+                id SERIAL PRIMARY KEY,
+                user_id INT,
+                track_voted VARCHAR(100),
+                recommendations TEXT
+            );
+        """)
+        conn.commit()
+    except Exception as e:
+        app.logger.error(f"Error al crear la tabla: {e}")
 
-# Llamar a la función para crear la tabla
 create_votes_table()
 
 # Cargar las canciones de Spotify
@@ -61,6 +62,13 @@ def get_tracks_by_genre():
         track = spotify_songs[spotify_songs['playlist_genre'] == genre].sample(1)  # Seleccionar una canción aleatoria por género
         selected_tracks.append(track.iloc[0])
     return selected_tracks
+
+# Ruta de health check
+@app.route('/health')
+def health_check():
+    check_redis_connection()
+    check_postgres_connection()
+    return "OK", 200
 
 # Ruta principal para mostrar las opciones de votación y recomendaciones
 @app.route('/')
@@ -108,7 +116,7 @@ def vote():
             conn.commit()
         except Exception as e:
             conn.rollback()  # Revertir en caso de error
-            print(f"Error al insertar el voto: {e}")
+            app.logger.error(f"Error al insertar el voto: {e}")
             return redirect('/')  # Redirigir sin recomendaciones en caso de error
     
     # Redirigir a la página principal con las recomendaciones

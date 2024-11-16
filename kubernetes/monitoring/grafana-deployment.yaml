@@ -21,7 +21,7 @@ spec:
             - containerPort: 3000
           env:
             - name: GF_SECURITY_ADMIN_PASSWORD
-              value: "admin"  # Puedes cambiar esta contraseña
+              value: "admin"  # Cambia esta contraseña según tus necesidades
           resources:
             limits:
               memory: "512Mi"  # Limita la memoria a 512 MB
@@ -31,8 +31,8 @@ spec:
               cpu: "250m"      # Reserva el uso de CPU a 25% de un núcleo
           volumeMounts:
             - name: grafana-dashboard-volume
-              mountPath: /etc/grafana/provisioning/dashboards
-              subPath: dashboard.json  # Monta el archivo dashboard.json
+              mountPath: /etc/grafana/provisioning/dashboards/dashboard.json
+              subPath: dashboard.json  # Especifica el subPath para el archivo
       volumes:
         - name: grafana-dashboard-volume
           configMap:
@@ -44,10 +44,11 @@ kind: Service
 metadata:
   name: grafana
 spec:
-  ports:
-    - port: 3000
   selector:
     app: grafana
+  ports:
+    - port: 3000
+      targetPort: 3000  # Asegúrate de especificar el puerto objetivo
 
 ---
 apiVersion: v1

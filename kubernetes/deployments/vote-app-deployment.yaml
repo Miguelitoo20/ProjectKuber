@@ -24,16 +24,15 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "250m"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: vote-app
-spec:
-  ports:
-    - port: 80 
-      targetPort: 80 
-      nodePort: 31068
-  selector:
-    app: vote-app
-  type: NodePort
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10

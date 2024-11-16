@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: recommendation-service
-          image: franklinmamanim921/recomendacion:latest 
+          image: franklinmamanim921/recomendacion:latest
           ports:
             - containerPort: 5001
           resources:
@@ -24,16 +24,15 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "250m"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: recommendation-service
-spec:
-  ports: 
-  - port: 5001 
-    targetPort: 5001 
-    nodePort: 31838
-  selector:
-    app: recommendation-service
-  type: NodePort
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 5
+            periodSeconds: 10

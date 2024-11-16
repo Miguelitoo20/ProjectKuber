@@ -9,12 +9,32 @@ data:
     global:
       scrape_interval: 15s
     scrape_configs:
+      # Scrape para la aplicación Flask
       - job_name: 'flask-app'
         static_configs:
           - targets: ['vote-app:80', 'recommendation-service:5001']
+      
+      # Scrape para Redis (redis-exporter)
       - job_name: 'redis'
         static_configs:
-          - targets: ['redis:6379']
+          - targets: ['redis:9121']  # Cambié al puerto 9121 del redis-exporter
+      
+      # Scrape para PostgreSQL (postgres-exporter)
       - job_name: 'postgres'
         static_configs:
-          - targets: ['db:5432']
+          - targets: ['db:9187']  # Cambié al puerto 9187 del postgres-exporter
+
+      # Scrape para otros contenedores (si es necesario)
+      - job_name: 'db-api'
+        static_configs:
+          - targets: ['db:5432']  # El puerto del servicio de base de datos, solo si quieres monitorear también el puerto SQL directo
+          
+      # Scrape para el contenedor de votación (vote-app)
+      - job_name: 'vote-app'
+        static_configs:
+          - targets: ['vote-app:80']  # Puerto del contenedor principal de la app de votación
+
+      # Scrape para el servicio de recomendación
+      - job_name: 'recommendation-service'
+        static_configs:
+          - targets: ['recommendation-service:5001']  # Puerto del servicio de recomendaciones
