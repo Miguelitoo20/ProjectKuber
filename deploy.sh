@@ -32,11 +32,20 @@ sudo systemctl enable docker
 sudo docker --version
 
 # Agregar al usuario actual al grupo de Docker (esto permite ejecutar Docker sin sudo)
-sudo usermod -aG docker $USER
+if ! groups $USER | grep -q "\bdocker\b"; then
+    echo "Agregando el usuario al grupo Docker..."
+    sudo usermod -aG docker $USER
+    echo "Es necesario reiniciar sesión o ejecutar 'newgrp docker' para que los cambios de grupo tengan efecto."
+    newgrp docker
+else
+    echo "El usuario ya está en el grupo Docker."
+fi
 
-echo "Es necesario reiniciar sesión o el sistema para que los cambios de grupo en Docker tengan efecto."
+# Paso 2: Verificar acceso a Docker
+echo "Verificando acceso a Docker sin sudo..."
+docker info
 
-# Paso 2: Instalar Minikube
+# Paso 3: Instalar Minikube
 echo "Instalando Minikube..."
 
 # Descargar la última versión de Minikube
@@ -49,11 +58,11 @@ sudo mv minikube /usr/local/bin/
 # Verificar instalación de Minikube
 minikube version
 
-# Paso 3: Instalar kubectl
+# Paso 4: Instalar kubectl
 echo "Instalando kubectl..."
 
 # Descargar la última versión de kubectl
-curl -LO "https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl"
+curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
 
 # Dar permisos de ejecución y mover a /usr/local/bin
 chmod +x ./kubectl
@@ -62,13 +71,13 @@ sudo mv ./kubectl /usr/local/bin/kubectl
 # Verificar instalación de kubectl
 kubectl version --client
 
-# Paso 4: Verificar que Docker esté en funcionamiento antes de iniciar Minikube
+# Paso 5: Verificar que Docker esté en funcionamiento antes de iniciar Minikube
 if ! systemctl is-active --quiet docker; then
     echo "Docker no está corriendo. Inicia Docker antes de continuar."
     exit 1
 fi
 
-# Paso 5: Iniciar Minikube
+# Paso 6: Iniciar Minikube
 echo "Iniciando Minikube..."
 minikube start --driver=docker
 
@@ -79,11 +88,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Paso 6: Verificar el acceso al clúster de Minikube
+# Paso 7: Verificar el acceso al clúster de Minikube
 echo "Verificando el acceso al clúster de Minikube..."
 kubectl cluster-info
 
-# Paso 7: Clonar el repositorio
+# Paso 8: Clonar el repositorio
 echo "Clonando el repositorio..."
 git clone https://github.com/FranklinJunnior/Proyect-Kuber.git
 
@@ -93,24 +102,24 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Paso 8: Verificar si la carpeta kubernetes existe y cambiar al directorio del repositorio clonado
+# Paso 9: Verificar si la carpeta kubernetes existe y cambiar al directorio del repositorio clonado
 if [ ! -d "Proyect-Kuber/kubernetes" ]; then
     echo "El directorio kubernetes no existe. Verifica la estructura del repositorio."
     exit 1
 fi
 cd Proyect-Kuber/kubernetes
 
-# Paso 9: Aplicar los archivos de Kubernetes
+# Paso 10: Aplicar los archivos de Kubernetes
 echo "Aplicando los archivos de Kubernetes..."
 kubectl apply -f deployments/
 kubectl apply -f services/
 kubectl apply -f monitoring/
 
-# Paso 10: Verificar el estado de los pods en Kubernetes
+# Paso 11: Verificar el estado de los pods en Kubernetes
 echo "Verificando el estado de los pods..."
 kubectl get pods
 
-# Paso 11: Exponer los servicios en los puertos especificados
+# Paso 12: Exponer los servicios en los puertos especificados
 echo "Exponiendo los puertos importantes..."
 kubectl expose deployment vote-app --type=NodePort --port=80 --target-port=80 --name=vote-app-service
 kubectl expose deployment grafana --type=NodePort --port=3000 --target-port=3000 --name=grafana-service
@@ -118,11 +127,11 @@ kubectl expose deployment prometheus --type=NodePort --port=9090 --target-port=9
 
 echo "Puertos expuestos correctamente."
 
-# Paso 12: Verificar los servicios expuestos
+# Paso 13: Verificar los servicios expuestos
 echo "Verificando los servicios expuestos..."
 kubectl get svc
 
-# Paso 13: Verificar el acceso a los servicios expuestos
+# Paso 14: Verificar el acceso a los servicios expuestos
 # Obtener la URL de Grafana
 GRAFANA_URL=$(minikube service grafana --url)
 echo "Grafana está disponible en la URL: $GRAFANA_URL"
