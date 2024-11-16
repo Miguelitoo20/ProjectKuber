@@ -3,9 +3,10 @@ kind: Service
 metadata:
   name: prometheus
 spec:
+  selector:
+    app: prometheus
   ports:
     - port: 9090
       targetPort: 9090
-  selector:
-    app: prometheus
-  type: ClusterIP  # Exposición interna dentro del clúster
+      nodePort: 31001  # Asigna un puerto para acceder fuera del clúster
+  type: NodePort  # Cambiar de ClusterIP a NodePort
