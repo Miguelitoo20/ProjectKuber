@@ -24,11 +24,11 @@ spec:
               mountPath: /etc/prometheus
           resources:
             limits:
-              memory: "1Gi"  # Limita la memoria a 1 GB
-              cpu: "1"       # Limita el uso de CPU a 1 núcleo
+              memory: "512Mi"  # Limita la memoria a 512 MB
+              cpu: "500m"      # Limita el uso de CPU a 50% de un núcleo
             requests:
-              memory: "512Mi"  # Reserva 512 MB de memoria
-              cpu: "500m"      # Reserva el uso de CPU a 50% de un núcleo
+              memory: "256Mi"  # Reserva 256 MB de memoria
+              cpu: "250m"      # Reserva el uso de CPU a 25% de un núcleo
       volumes:
         - name: prometheus-config
           configMap:
