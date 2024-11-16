@@ -8,6 +8,17 @@ check_error() {
     fi
 }
 
+# Función para verificar permisos de Docker
+verify_docker_permissions() {
+    # Intentar ejecutar docker sin sudo
+    if docker info >/dev/null 2>&1; then
+        echo "Permisos de Docker verificados correctamente"
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Verificar sistema operativo
 if ! grep -q "Ubuntu" /etc/os-release; then
     echo "Este script está diseñado para Ubuntu. Por favor, usa una AMI de Ubuntu."
@@ -60,12 +71,29 @@ fi
 sudo systemctl start docker || check_error "No se pudo iniciar Docker"
 sudo systemctl enable docker
 
-# Configurar usuario
-if ! groups $USER | grep -q "\bdocker\b"; then
+# Configurar permisos de Docker
+echo "Configurando permisos de Docker..."
+if ! verify_docker_permissions; then
+    # Añadir usuario al grupo docker
     sudo usermod -aG docker $USER
-    echo "Usuario añadido al grupo docker. Los cambios tendrán efecto en la próxima sesión."
-    # Aplicar los cambios del grupo sin necesidad de reiniciar
-    newgrp docker
+    
+    # Crear el socket de Docker con los permisos correctos
+    sudo chmod 666 /var/run/docker.sock
+    
+    # Reiniciar el servicio de Docker
+    sudo systemctl restart docker
+    
+    echo "Esperando a que Docker esté disponible..."
+    sleep 5
+    
+    # Verificar nuevamente los permisos
+    if ! verify_docker_permissions; then
+        echo "Error: No se pudieron establecer los permisos de Docker correctamente."
+        echo "Por favor, ejecuta los siguientes comandos manualmente y luego vuelve a ejecutar el script:"
+        echo "1. sudo usermod -aG docker \$USER"
+        echo "2. newgrp docker"
+        exit 1
+    fi
 fi
 
 # Instalar la última versión de Minikube
@@ -81,6 +109,13 @@ KUBECTL_VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/rele
 curl -LO "https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" || check_error "No se pudo descargar kubectl"
 chmod +x kubectl
 sudo mv kubectl /usr/local/bin/
+
+# Verificar permisos de Docker antes de iniciar Minikube
+if ! verify_docker_permissions; then
+    echo "Error: No tienes permisos para ejecutar Docker sin sudo."
+    echo "Por favor, cierra la sesión y vuelve a iniciar sesión, luego ejecuta el script nuevamente."
+    exit 1
+fi
 
 # Iniciar Minikube con configuración optimizada para EC2
 echo "Iniciando Minikube..."
