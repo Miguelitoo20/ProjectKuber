@@ -1,148 +1,132 @@
 #!/bin/bash
 
-# Actualizar el sistema
-echo "Actualizando el sistema..."
-sudo apt-get update -y
-sudo apt-get upgrade -y
+# Función para verificar errores
+check_error() {
+    if [ $? -ne 0 ]; then
+        echo "Error: $1"
+        exit 1
+    fi
+}
 
-# Paso 1: Instalar Docker
-echo "Instalando Docker..."
-
-# Eliminar versiones antiguas
-sudo apt-get remove docker docker-engine docker.io containerd runc -y
-
-# Instalar dependencias necesarias
-sudo apt-get install apt-transport-https ca-certificates curl software-properties-common -y
-
-# Añadir la clave GPG oficial de Docker
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/trusted.gpg.d/docker.asc
-
-# Añadir el repositorio de Docker a APT
-sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-
-# Actualizar el índice de paquetes APT
-sudo apt-get update -y
-
-# Instalar Docker
-sudo apt-get install docker-ce docker-ce-cli containerd.io -y
-
-# Verificar que Docker se instaló correctamente
-sudo systemctl start docker
-sudo systemctl enable docker
-sudo docker --version
-
-# Agregar al usuario actual al grupo de Docker (esto permite ejecutar Docker sin sudo)
-if ! groups $USER | grep -q "\bdocker\b"; then
-    echo "Agregando el usuario al grupo Docker..."
-    sudo usermod -aG docker $USER
-    echo "Es necesario reiniciar sesión o ejecutar 'newgrp docker' para que los cambios de grupo tengan efecto."
-    newgrp docker
-else
-    echo "El usuario ya está en el grupo Docker."
+# Verificar sistema operativo
+if ! grep -q "Ubuntu" /etc/os-release; then
+    echo "Este script está diseñado para Ubuntu. Por favor, usa una AMI de Ubuntu."
+    exit 1
 fi
 
-# Paso 2: Verificar acceso a Docker
-echo "Verificando acceso a Docker sin sudo..."
-docker info
+# Verificar recursos mínimos
+CPU_CORES=$(nproc)
+TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
+AVAILABLE_DISK=$(df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
 
-# Paso 3: Instalar Minikube
+if [ $CPU_CORES -lt 2 ] || [ $TOTAL_MEM -lt 2048 ]; then
+    echo "Recursos insuficientes. Se requieren mínimo:"
+    echo "- 2 CPU cores (actual: $CPU_CORES)"
+    echo "- 2GB RAM (actual: $TOTAL_MEM MB)"
+    exit 1
+fi
+
+if [ $AVAILABLE_DISK -lt 20 ]; then
+    echo "Se requieren al menos 20GB de espacio disponible"
+    exit 1
+fi
+
+# Actualizar el sistema
+echo "Actualizando el sistema..."
+sudo apt-get update -y || check_error "No se pudo actualizar el sistema"
+sudo apt-get upgrade -y || check_error "No se pudo actualizar los paquetes"
+
+# Instalar Docker con verificación
+echo "Instalando Docker..."
+if ! command -v docker &> /dev/null; then
+    # Eliminar versiones antiguas
+    sudo apt-get remove docker docker-engine docker.io containerd runc -y
+
+    # Instalar dependencias
+    sudo apt-get install apt-transport-https ca-certificates curl software-properties-common -y || check_error "No se pudieron instalar las dependencias"
+
+    # Añadir repositorio Docker
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/trusted.gpg.d/docker.asc
+    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+    sudo apt-get update -y
+
+    # Instalar Docker
+    sudo apt-get install docker-ce docker-ce-cli containerd.io -y || check_error "No se pudo instalar Docker"
+else
+    echo "Docker ya está instalado"
+fi
+
+# Configurar Docker
+sudo systemctl start docker || check_error "No se pudo iniciar Docker"
+sudo systemctl enable docker
+
+# Configurar usuario
+if ! groups $USER | grep -q "\bdocker\b"; then
+    sudo usermod -aG docker $USER
+    echo "Usuario añadido al grupo docker. Los cambios tendrán efecto en la próxima sesión."
+fi
+
+# Instalar la última versión de Minikube
 echo "Instalando Minikube..."
-
-# Descargar la última versión de Minikube
-curl -Lo minikube https://storage.googleapis.com/minikube/releases/v1.30.0/minikube-linux-amd64
-
-# Dar permisos de ejecución y mover a /usr/local/bin
+MINIKUBE_VERSION=$(curl -s https://api.github.com/repos/kubernetes/minikube/releases/latest | grep tag_name | cut -d '"' -f 4)
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/${MINIKUBE_VERSION}/minikube-linux-amd64 || check_error "No se pudo descargar Minikube"
 chmod +x minikube
 sudo mv minikube /usr/local/bin/
 
-# Verificar instalación de Minikube
-minikube version
-
-# Paso 4: Instalar kubectl
+# Instalar kubectl
 echo "Instalando kubectl..."
+KUBECTL_VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
+curl -LO "https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" || check_error "No se pudo descargar kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
 
-# Descargar la última versión de kubectl
-curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
-
-# Dar permisos de ejecución y mover a /usr/local/bin
-chmod +x ./kubectl
-sudo mv ./kubectl /usr/local/bin/kubectl
-
-# Verificar instalación de kubectl
-kubectl version --client
-
-# Paso 5: Verificar que Docker esté en funcionamiento antes de iniciar Minikube
-if ! systemctl is-active --quiet docker; then
-    echo "Docker no está corriendo. Inicia Docker antes de continuar."
-    exit 1
-fi
-
-# Paso 6: Iniciar Minikube
+# Iniciar Minikube con configuración optimizada para EC2
 echo "Iniciando Minikube..."
-minikube start --driver=docker
+minikube start --driver=docker \
+    --memory=2048 \
+    --cpus=2 \
+    --disk-size=20g || check_error "No se pudo iniciar Minikube"
 
-# Verificar que Minikube esté funcionando correctamente
-minikube status
-if [ $? -ne 0 ]; then
-    echo "Minikube no pudo iniciarse correctamente. Por favor, verifica los logs."
-    exit 1
-fi
+# Verificar la instalación
+echo "Verificando la instalación..."
+kubectl cluster-info || check_error "No se pudo verificar el cluster"
 
-# Paso 7: Verificar el acceso al clúster de Minikube
-echo "Verificando el acceso al clúster de Minikube..."
-kubectl cluster-info
-
-# Paso 8: Clonar el repositorio
+# Clonar el repositorio y aplicar configuraciones
 echo "Clonando el repositorio..."
-git clone https://github.com/FranklinJunnior/Proyect-Kuber.git
+git clone https://github.com/FranklinJunnior/Proyect-Kuber.git || check_error "No se pudo clonar el repositorio"
+cd Proyect-Kuber/kubernetes || check_error "No se pudo acceder al directorio kubernetes"
 
-# Verificar si el git clone fue exitoso
-if [ $? -ne 0 ]; then
-    echo "Error al clonar el repositorio."
-    exit 1
-fi
+# Aplicar configuraciones con verificación
+echo "Aplicando configuraciones de Kubernetes..."
+kubectl apply -f deployments/ || check_error "Error al aplicar deployments"
+kubectl apply -f services/ || check_error "Error al aplicar services"
+kubectl apply -f monitoring/ || check_error "Error al aplicar monitoring"
 
-# Paso 9: Verificar si la carpeta kubernetes existe y cambiar al directorio del repositorio clonado
-if [ ! -d "Proyect-Kuber/kubernetes" ]; then
-    echo "El directorio kubernetes no existe. Verifica la estructura del repositorio."
-    exit 1
-fi
-cd Proyect-Kuber/kubernetes
+# Exponer servicios con verificación de estado
+echo "Exponiendo servicios..."
+for service in "vote-app:80" "grafana:3000" "prometheus:9090"; do
+    NAME=$(echo $service | cut -d: -f1)
+    PORT=$(echo $service | cut -d: -f2)
+    kubectl expose deployment $NAME --type=NodePort --port=$PORT --target-port=$PORT --name=$NAME-service || check_error "No se pudo exponer el servicio $NAME"
+done
 
-# Paso 10: Aplicar los archivos de Kubernetes
-echo "Aplicando los archivos de Kubernetes..."
-kubectl apply -f deployments/
-kubectl apply -f services/
-kubectl apply -f monitoring/
+# Mostrar URLs de acceso
+echo "URLs de acceso:"
+for service in "grafana" "prometheus" "vote-app"; do
+    URL=$(minikube service $service --url)
+    echo "$service está disponible en: $URL"
+done
 
-# Paso 11: Verificar el estado de los pods en Kubernetes
-echo "Verificando el estado de los pods..."
-kubectl get pods
+# Guardar información importante en un archivo
+echo "Guardando información de la instalación..."
+cat > installation_info.txt << EOF
+Fecha de instalación: $(date)
+Versión de Minikube: $(minikube version)
+Versión de kubectl: $(kubectl version --client)
+Versión de Docker: $(docker --version)
 
-# Paso 12: Exponer los servicios en los puertos especificados
-echo "Exponiendo los puertos importantes..."
-kubectl expose deployment vote-app --type=NodePort --port=80 --target-port=80 --name=vote-app-service
-kubectl expose deployment grafana --type=NodePort --port=3000 --target-port=3000 --name=grafana-service
-kubectl expose deployment prometheus --type=NodePort --port=9090 --target-port=9090 --name=prometheus-service
+URLs de acceso:
+$(kubectl get svc -o wide)
 
-echo "Puertos expuestos correctamente."
 
-# Paso 13: Verificar los servicios expuestos
-echo "Verificando los servicios expuestos..."
-kubectl get svc
-
-# Paso 14: Verificar el acceso a los servicios expuestos
-# Obtener la URL de Grafana
-GRAFANA_URL=$(minikube service grafana --url)
-echo "Grafana está disponible en la URL: $GRAFANA_URL"
-
-# Obtener la URL de Prometheus
-PROMETHEUS_URL=$(minikube service prometheus --url)
-echo "Prometheus está disponible en la URL: $PROMETHEUS_URL"
-
-# Obtener la URL de la aplicación Vote
-VOTE_APP_URL=$(minikube service vote-app --url)
-echo "La aplicación Vote está disponible en la URL: $VOTE_APP_URL"
-
-# Fin del script
-echo "Proceso de instalación y configuración completado."
+echo "Instalación completada. Revise installation_info.txt para más detalles."
