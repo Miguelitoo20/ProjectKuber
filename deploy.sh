@@ -64,6 +64,8 @@ sudo systemctl enable docker
 if ! groups $USER | grep -q "\bdocker\b"; then
     sudo usermod -aG docker $USER
     echo "Usuario añadido al grupo docker. Los cambios tendrán efecto en la próxima sesión."
+    # Aplicar los cambios del grupo sin necesidad de reiniciar
+    newgrp docker
 fi
 
 # Instalar la última versión de Minikube
@@ -127,6 +129,6 @@ Versión de Docker: $(docker --version)
 
 URLs de acceso:
 $(kubectl get svc -o wide)
-
+EOF
 
 echo "Instalación completada. Revise installation_info.txt para más detalles."
