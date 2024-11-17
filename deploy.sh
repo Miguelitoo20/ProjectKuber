@@ -8,16 +8,6 @@ check_error() {
     fi
 }
 
-# Función para verificar permisos de Docker
-verify_docker_permissions() {
-    if docker info >/dev/null 2>&1; then
-        echo "Permisos de Docker verificados correctamente."
-        return 0
-    else
-        return 1
-    fi
-}
-
 # Verificar sistema operativo
 if ! grep -q "Ubuntu" /etc/os-release; then
     echo "Este script está diseñado para Ubuntu. Por favor, usa una AMI de Ubuntu."
@@ -51,8 +41,8 @@ if ! command -v docker &> /dev/null; then
     echo "Docker no está instalado. Procediendo a instalar..."
     sudo apt-get remove docker docker-engine docker.io containerd runc -y
     sudo apt-get install apt-transport-https ca-certificates curl software-properties-common -y || check_error "No se pudieron instalar las dependencias de Docker."
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/trusted.gpg.d/docker.asc
-    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/trusted.gpg.d/docker.asc || check_error "No se pudo agregar la llave GPG de Docker."
+    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" || check_error "No se pudo agregar el repositorio de Docker."
     sudo apt-get update -y
     sudo apt-get install docker-ce docker-ce-cli containerd.io -y || check_error "No se pudo instalar Docker."
 else
@@ -62,7 +52,7 @@ fi
 # Configurar Docker
 sudo systemctl start docker || check_error "No se pudo iniciar Docker."
 sudo systemctl enable docker
-if ! verify_docker_permissions; then
+if ! sudo docker info >/dev/null 2>&1; then
     sudo usermod -aG docker $USER
     sudo chmod 666 /var/run/docker.sock
     sudo systemctl restart docker
