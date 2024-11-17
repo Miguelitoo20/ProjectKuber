@@ -27,11 +27,11 @@ spec:
               mountPath: /var/lib/postgresql/data
           resources:
             limits:
-              memory: "256Mi"  # Reducido desde 512Mi
-              cpu: "250m"      # Reducido desde 500m
+              memory: "128Mi"  # Reducido desde 512Mi
+              cpu: "100m"      # Reducido desde 500m
             requests:
-              memory: "128Mi"  # Reducido desde 256Mi
-              cpu: "100m"      # Reducido desde 250m
+              memory: "64Mi"  # Reducido desde 256Mi
+              cpu: "50m"      # Reducido desde 250m
         - name: postgres-exporter  # Añadir el exporter
           image: wrouesnel/postgres_exporter:latest
           env:
