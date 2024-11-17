@@ -15,39 +15,74 @@ if grep -qi microsoft /proc/version; then
     # Verificar Docker Desktop
     if ! command -v docker &> /dev/null; then
         echo "Docker no está instalado. Por favor, instala Docker Desktop para Windows y asegúrate de que WSL2 está habilitado."
-        echo "1. Descarga Docker Desktop desde https://www.docker.com/products/docker-desktop"
-        echo "2. Asegúrate de que WSL2 está configurado como backend en Docker Desktop"
-        echo "3. Reinicia tu terminal WSL"
         exit 1
     else
         echo "Docker está instalado, verificando el servicio..."
-        # En WSL con Docker Desktop, no necesitamos iniciar el servicio
+        
+        # Fix para WSL: Asegurarse de que el socket de Docker existe y tiene los permisos correctos
+        if [ ! -S /var/run/docker.sock ]; then
+            echo "Creando enlace al socket de Docker..."
+            DOCKER_DISTRO="Ubuntu"
+            DOCKER_DIR=/mnt/wsl/shared-docker
+            DOCKER_SOCK="$DOCKER_DIR/docker.sock"
+            
+            if [ ! -d $DOCKER_DIR ]; then
+                sudo mkdir -pm o=,ug=rwx "$DOCKER_DIR"
+            fi
+            
+            if [ ! -S $DOCKER_SOCK ]; then
+                echo "Esperando que Docker Desktop inicie..."
+                sleep 10
+            fi
+            
+            if [ ! -S $DOCKER_SOCK ]; then
+                echo "No se puede encontrar el socket de Docker. Por favor:"
+                echo "1. Abre Docker Desktop"
+                echo "2. Ve a Settings -> Resources -> WSL Integration"
+                echo "3. Asegúrate de que la integración está habilitada para Ubuntu"
+                echo "4. Reinicia Docker Desktop"
+                exit 1
+            fi
+        fi
+        
+        # Intentar conectar con Docker
         if ! docker info >/dev/null 2>&1; then
-            echo "No se puede conectar a Docker. Por favor, verifica que Docker Desktop está ejecutándose en Windows"
-            exit 1
+            echo "Intentando fix adicional para Docker..."
+            export DOCKER_HOST=tcp://localhost:2375
+            if ! docker info >/dev/null 2>&1; then
+                echo "No se puede conectar a Docker. Por favor:"
+                echo "1. Verifica que Docker Desktop está ejecutándose"
+                echo "2. En Docker Desktop, ve a Settings -> General y marca 'Expose daemon on tcp://localhost:2375 without TLS'"
+                echo "3. Reinicia Docker Desktop"
+                exit 1
+            fi
         fi
         echo "Docker está funcionando correctamente"
     fi
-else
-    # Código original para sistemas no-WSL
-    if ! command -v docker &> /dev/null; then
-        echo "Docker no está instalado. Procediendo a instalar..."
-        sudo apt-get remove docker docker-engine docker.io containerd runc -y
-        sudo apt-get install apt-transport-https ca-certificates curl software-properties-common -y || check_error "No se pudieron instalar las dependencias de Docker."
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/trusted.gpg.d/docker.asc || check_error "No se pudo agregar la llave GPG de Docker."
-        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" || check_error "No se pudo agregar el repositorio de Docker."
-        sudo apt-get update -y
-        sudo apt-get install docker-ce docker-ce-cli containerd.io -y || check_error "No se pudo instalar Docker."
-    fi
-
-    # Configurar Docker para sistemas no-WSL
-    if sudo systemctl start docker && sudo systemctl enable docker; then
-        echo "Docker iniciado y habilitado correctamente."
-    else
-        echo "Failed to start Docker service. Ensure Docker is installed properly." >&2
-        exit 1
-    fi
 fi
+
+# Verificar sistema operativo
+if ! grep -q "Ubuntu" /etc/os-release; then
+    echo "Este script está diseñado para Ubuntu. Por favor, usa una AMI de Ubuntu."
+    exit 1
+fi
+
+# Verificar recursos mínimos
+CPU_CORES=$(nproc)
+TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
+AVAILABLE_DISK=$(df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
+
+if [ $CPU_CORES -lt 2 ] || [ $TOTAL_MEM -lt 2048 ]; then
+    echo "Recursos insuficientes. Se requieren mínimo:"
+    echo "- 2 CPU cores (actual: $CPU_CORES)"
+    echo "- 2GB RAM (actual: $TOTAL_MEM MB)"
+    exit 1
+fi
+
+# Actualizar el sistema
+echo "Actualizando el sistema..."
+sudo apt-get update -y || check_error "No se pudo actualizar el sistema."
+sudo apt-get upgrade -y || check_error "No se pudo actualizar los paquetes."
 
 # Verificar e instalar Minikube
 if ! command -v minikube &> /dev/null; then
@@ -82,26 +117,42 @@ else
     echo "Minikube ya está iniciado."
 fi
 
-# Resto del script continúa igual...
 # Clonar el repositorio y aplicar configuraciones
 if [ ! -d "Proyect-Kuber" ]; then
     echo "Clonando el repositorio..."
     git clone https://github.com/FranklinJunnior/Proyect-Kuber.git || check_error "No se pudo clonar el repositorio."
 fi
+
 cd Proyect-Kuber/kubernetes || check_error "No se pudo acceder al directorio kubernetes."
 
-# Aplicar configuraciones de Kubernetes
-echo "Aplicando configuraciones de Kubernetes..."
-kubectl apply -f deployments/ || check_error "Error al aplicar deployments."
-kubectl apply -f services/ || check_error "Error al aplicar services."
-kubectl apply -f monitoring/ || check_error "Error al aplicar monitoring."
+# Verificar si los directorios existen antes de aplicar configuraciones
+if [ -d "deployments" ] && [ -d "services" ] && [ -d "monitoring" ]; then
+    # Aplicar configuraciones de Kubernetes
+    echo "Aplicando configuraciones de Kubernetes..."
+    kubectl apply -f deployments/ || check_error "Error al aplicar deployments."
+    kubectl apply -f services/ || check_error "Error al aplicar services."
+    kubectl apply -f monitoring/ || check_error "Error al aplicar monitoring."
 
-# Mostrar URLs de acceso
-echo "URLs de acceso:"
-for service in "grafana" "prometheus" "vote-app"; do
-    URL=$(minikube service $service --url)
-    echo "$service está disponible en: $URL"
-done
+    # Esperar a que los servicios estén listos
+    echo "Esperando a que los servicios estén listos..."
+    kubectl wait --for=condition=ready pod -l app=grafana --timeout=300s
+    kubectl wait --for=condition=ready pod -l app=prometheus --timeout=300s
+    kubectl wait --for=condition=ready pod -l app=vote-app --timeout=300s
+
+    # Mostrar URLs de acceso
+    echo "URLs de acceso:"
+    for service in "grafana" "prometheus" "vote-app"; do
+        URL=$(minikube service $service --url)
+        echo "$service está disponible en: $URL"
+    done
+else
+    echo "Error: No se encontraron los directorios necesarios en el repositorio."
+    echo "Estructura esperada:"
+    echo "- deployments/"
+    echo "- services/"
+    echo "- monitoring/"
+    exit 1
+fi
 
 # Guardar información importante
 echo "Guardando información de la instalación..."
@@ -113,6 +164,21 @@ Versión de Docker: $(docker --version)
 
 URLs de acceso:
 $(kubectl get svc -o wide)
+
+Estado de los pods:
+$(kubectl get pods -o wide)
+
+Notas adicionales:
+- Para acceder a los servicios, use los URLs proporcionados arriba
+- Para detener minikube: minikube stop
+- Para iniciar minikube: minikube start
 EOF
 
 echo "Instalación completada. Revise installation_info.txt para más detalles."
+echo "
+Instrucciones post-instalación:
+1. Para acceder a los servicios, use los URLs mostrados arriba
+2. Para detener el cluster: minikube stop
+3. Para iniciar el cluster: minikube start
+4. Para eliminar el cluster: minikube delete
+"
