@@ -32,7 +32,7 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "250m"
-        - name: postgres-exporter  # Añadimos el exporter
+        - name: postgres-exporter  # Añadir el exporter
           image: wrouesnel/postgres_exporter:latest
           env:
             - name: DATA_SOURCE_NAME
@@ -50,4 +50,3 @@ spec:
         - name: db-data
           persistentVolumeClaim:
             claimName: db-data-pvc
-
