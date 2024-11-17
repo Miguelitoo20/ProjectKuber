@@ -50,8 +50,13 @@ else
 fi
 
 # Configurar Docker
-sudo systemctl start docker || check_error "No se pudo iniciar Docker."
-sudo systemctl enable docker
+if sudo systemctl start docker && sudo systemctl enable docker; then
+    echo "Docker iniciado y habilitado correctamente."
+else
+    echo "Failed to start Docker service. Ensure Docker is installed properly." >&2
+    exit 1
+fi
+
 if ! sudo docker info >/dev/null 2>&1; then
     sudo usermod -aG docker $USER
     sudo chmod 666 /var/run/docker.sock
