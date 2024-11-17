@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: default
+data:
+  nginx.conf: |
+    events {}
+
+    http {
+        # Configurar upstreams para los servicios del clúster
+        upstream recommendation_service {
+            server 10.102.175.61:32218;  # recommendation-service
+        }
+
+        upstream vote_app {
+            server 10.108.252.105:31068;  # vote-app
+        }
+
+        upstream prometheus {
+            server 10.101.247.18:31001;  # prometheus
+        }
+
+        upstream grafana {
+            server 10.107.99.195:31000;  # grafana
+        }
+
+        upstream redis {
+            server 10.108.56.177:31211;  # redis
+        }
+
+        upstream db {
+            server 10.108.166.177:30355;  # PostgreSQL
+        }
+
+        server {
+            listen 80;
+
+            # Rutas para cada servicio
+            location /api/ {
+                proxy_pass http://recommendation_service;
+            }
+
+            location /vote/ {
+                rewrite ^/vote/(.*) /$1 break;
+                proxy_pass http://vote_app;
+            }
+
+            location /prometheus/ {
+                proxy_pass http://prometheus;
+            }
+
+            location /grafana/ {
+                proxy_pass http://grafana;
+            }
+
+            location /redis/ {
+                proxy_pass http://redis;
+            }
+
+            location /db/ {
+                proxy_pass http://db;
+            }
+
+            # Configuraciones adicionales para mejorar el proxy
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+    }
