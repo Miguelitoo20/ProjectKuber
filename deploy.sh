@@ -8,61 +8,45 @@ check_error() {
     fi
 }
 
-# Verificar sistema operativo
-if ! grep -q "Ubuntu" /etc/os-release; then
-    echo "Este script está diseñado para Ubuntu. Por favor, usa una AMI de Ubuntu."
-    exit 1
-fi
-
-# Verificar recursos mínimos
-CPU_CORES=$(nproc)
-TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
-AVAILABLE_DISK=$(df -h / | awk 'NR==2 {print $4}' | sed 's/G//')
-
-if [ $CPU_CORES -lt 2 ] || [ $TOTAL_MEM -lt 2048 ]; then
-    echo "Recursos insuficientes. Se requieren mínimo:"
-    echo "- 2 CPU cores (actual: $CPU_CORES)"
-    echo "- 2GB RAM (actual: $TOTAL_MEM MB)"
-    exit 1
-fi
-
-if [ $AVAILABLE_DISK -lt 20 ]; then
-    echo "Se requieren al menos 20GB de espacio disponible."
-    exit 1
-fi
-
-# Actualizar el sistema
-echo "Actualizando el sistema..."
-sudo apt-get update -y || check_error "No se pudo actualizar el sistema."
-sudo apt-get upgrade -y || check_error "No se pudo actualizar los paquetes."
-
-# Verificar e instalar Docker
-if ! command -v docker &> /dev/null; then
-    echo "Docker no está instalado. Procediendo a instalar..."
-    sudo apt-get remove docker docker-engine docker.io containerd runc -y
-    sudo apt-get install apt-transport-https ca-certificates curl software-properties-common -y || check_error "No se pudieron instalar las dependencias de Docker."
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/trusted.gpg.d/docker.asc || check_error "No se pudo agregar la llave GPG de Docker."
-    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" || check_error "No se pudo agregar el repositorio de Docker."
-    sudo apt-get update -y
-    sudo apt-get install docker-ce docker-ce-cli containerd.io -y || check_error "No se pudo instalar Docker."
+# Verificar si estamos en WSL
+if grep -qi microsoft /proc/version; then
+    echo "Detectado entorno WSL"
+    
+    # Verificar Docker Desktop
+    if ! command -v docker &> /dev/null; then
+        echo "Docker no está instalado. Por favor, instala Docker Desktop para Windows y asegúrate de que WSL2 está habilitado."
+        echo "1. Descarga Docker Desktop desde https://www.docker.com/products/docker-desktop"
+        echo "2. Asegúrate de que WSL2 está configurado como backend en Docker Desktop"
+        echo "3. Reinicia tu terminal WSL"
+        exit 1
+    else
+        echo "Docker está instalado, verificando el servicio..."
+        # En WSL con Docker Desktop, no necesitamos iniciar el servicio
+        if ! docker info >/dev/null 2>&1; then
+            echo "No se puede conectar a Docker. Por favor, verifica que Docker Desktop está ejecutándose en Windows"
+            exit 1
+        fi
+        echo "Docker está funcionando correctamente"
+    fi
 else
-    echo "Docker ya está instalado."
-fi
+    # Código original para sistemas no-WSL
+    if ! command -v docker &> /dev/null; then
+        echo "Docker no está instalado. Procediendo a instalar..."
+        sudo apt-get remove docker docker-engine docker.io containerd runc -y
+        sudo apt-get install apt-transport-https ca-certificates curl software-properties-common -y || check_error "No se pudieron instalar las dependencias de Docker."
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/trusted.gpg.d/docker.asc || check_error "No se pudo agregar la llave GPG de Docker."
+        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" || check_error "No se pudo agregar el repositorio de Docker."
+        sudo apt-get update -y
+        sudo apt-get install docker-ce docker-ce-cli containerd.io -y || check_error "No se pudo instalar Docker."
+    fi
 
-# Configurar Docker
-if sudo systemctl start docker && sudo systemctl enable docker; then
-    echo "Docker iniciado y habilitado correctamente."
-else
-    echo "Failed to start Docker service. Ensure Docker is installed properly." >&2
-    exit 1
-fi
-
-if ! sudo docker info >/dev/null 2>&1; then
-    sudo usermod -aG docker $USER
-    sudo chmod 666 /var/run/docker.sock
-    sudo systemctl restart docker
-    echo "Es necesario cerrar sesión y volver a ingresar para aplicar los cambios de permisos de Docker."
-    exit 1
+    # Configurar Docker para sistemas no-WSL
+    if sudo systemctl start docker && sudo systemctl enable docker; then
+        echo "Docker iniciado y habilitado correctamente."
+    else
+        echo "Failed to start Docker service. Ensure Docker is installed properly." >&2
+        exit 1
+    fi
 fi
 
 # Verificar e instalar Minikube
@@ -87,7 +71,7 @@ else
     echo "kubectl ya está instalado."
 fi
 
-# Iniciar Minikube con configuración optimizada para EC2
+# Iniciar Minikube con configuración optimizada
 if ! minikube status &> /dev/null; then
     echo "Iniciando Minikube..."
     minikube start --driver=docker \
@@ -98,6 +82,7 @@ else
     echo "Minikube ya está iniciado."
 fi
 
+# Resto del script continúa igual...
 # Clonar el repositorio y aplicar configuraciones
 if [ ! -d "Proyect-Kuber" ]; then
     echo "Clonando el repositorio..."
