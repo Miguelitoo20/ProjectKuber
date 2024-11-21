@@ -123,7 +123,7 @@ if [ ! -d "Proyect-Kuber" ]; then
     git clone https://github.com/Miguelitoo20/ProjectKuber.git || check_error "No se pudo clonar el repositorio."
 fi
 
-cd PProjectKuber/kubernetes || check_error "No se pudo acceder al directorio kubernetes."
+cd ProjectKuber/kubernetes || check_error "No se pudo acceder al directorio kubernetes."
 
 # Verificar si los directorios existen antes de aplicar configuraciones
 if [ -d "deployments" ] && [ -d "services" ] && [ -d "monitoring" ]; then
