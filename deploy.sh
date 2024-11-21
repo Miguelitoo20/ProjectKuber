@@ -120,10 +120,10 @@ fi
 # Clonar el repositorio y aplicar configuraciones
 if [ ! -d "Proyect-Kuber" ]; then
     echo "Clonando el repositorio..."
-    git clone https://github.com/FranklinJunnior/Proyect-Kuber.git || check_error "No se pudo clonar el repositorio."
+    git clone https://github.com/Miguelitoo20/ProjectKuber.git || check_error "No se pudo clonar el repositorio."
 fi
 
-cd Proyect-Kuber/kubernetes || check_error "No se pudo acceder al directorio kubernetes."
+cd PProjectKuber/kubernetes || check_error "No se pudo acceder al directorio kubernetes."
 
 # Verificar si los directorios existen antes de aplicar configuraciones
 if [ -d "deployments" ] && [ -d "services" ] && [ -d "monitoring" ]; then
